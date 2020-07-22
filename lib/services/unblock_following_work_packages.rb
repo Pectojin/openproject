@@ -1,4 +1,3 @@
-#-- encoding: UTF-8
 #-- copyright
 # OpenProject is an open source project management software.
 # Copyright (C) 2012-2020 the OpenProject GmbH
@@ -27,28 +26,20 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-module Redmine
-  class Notifiable < Struct.new(:name, :parent)
-    def to_s
-      name
-    end
+class Services::UnblockFollowingWorkPackages
+  def initialize(work_package, user)
+    @work_package = work_package
+    @user = user
+  end
 
-    # TODO: Plugin API for adding a new notification?
-    def self.all
-      notifications = []
-      notifications << Notifiable.new('work_package_added')
-      notifications << Notifiable.new('work_package_updated')
-      notifications << Notifiable.new('work_package_note_added', 'work_package_updated')
-      notifications << Notifiable.new('work_package_unblocked', 'work_package_updated')
-      notifications << Notifiable.new('status_updated', 'work_package_updated')
-      notifications << Notifiable.new('work_package_priority_updated', 'work_package_updated')
-      notifications << Notifiable.new('news_added')
-      notifications << Notifiable.new('news_comment_added')
-      notifications << Notifiable.new('file_added')
-      notifications << Notifiable.new('message_posted')
-      notifications << Notifiable.new('wiki_content_added')
-      notifications << Notifiable.new('wiki_content_updated')
-      notifications
+  def run()
+    return unless @work_package.closed?
+    @work_package.precedes.with_status_open.each do |dependent|
+      unless dependent.follows.with_status_open.any?
+        OpenProject::Notifications.send(OpenProject::Events::WORK_PACKAGE_UNBLOCKED,
+                                        work_package: dependent,
+                                        wp_unblocker: @user)
+      end
     end
   end
 end

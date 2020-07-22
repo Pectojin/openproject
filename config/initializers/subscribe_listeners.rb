@@ -43,3 +43,11 @@ end
 OpenProject::Notifications.subscribe('watcher_removed') do |payload|
   WatcherRemovedNotificationMailer.handle_watcher(payload[:watcher], payload[:watcher_remover])
 end
+
+OpenProject::Notifications.subscribe(OpenProject::Events::WORK_PACKAGE_UNBLOCKED) do |payload|
+  # Here I'm calling a new "WorkPackageUnblockedNotificationMailer", unless we can work the
+  # notification into the existing journaled WP notification mailer
+  puts "######################"
+  puts "Notification that a work package is unblocked: #{ payload[:work_package].subject }"
+  puts "######################"
+end
