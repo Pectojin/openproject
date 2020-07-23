@@ -29,6 +29,7 @@
 #++
 
 OpenProject::Notifications.subscribe('journal_created') do |payload|
+  Services::UnblockFollowingWorkPackages.new(payload[:journal]).run
   Notifications::JournalNotificationService.call(payload[:journal], payload[:send_notification])
 end
 
