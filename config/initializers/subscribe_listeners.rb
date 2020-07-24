@@ -29,11 +29,11 @@
 #++
 
 OpenProject::Notifications.subscribe('journal_created') do |payload|
-  Services::UnblockFollowingWorkPackages.new(payload[:journal]).run
   Notifications::JournalNotificationService.call(payload[:journal], payload[:send_notification])
 end
 
 OpenProject::Notifications.subscribe(OpenProject::Events::AGGREGATED_WORK_PACKAGE_JOURNAL_READY) do |payload|
+  Services::UnblockFollowingWorkPackages.new(payload[:journal]).run
   Notifications::JournalWpMailService.call(payload[:journal], payload[:send_mail])
 end
 
