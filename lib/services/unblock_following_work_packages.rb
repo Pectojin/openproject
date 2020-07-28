@@ -43,7 +43,9 @@ class Services::UnblockFollowingWorkPackages
     return if @journal.get_changes["status_id"].first.in? @closed_status_ids
     return unless @journal.get_changes["status_id"].last.in? @closed_status_ids
     # We want to consider both follow/precede and blocks/blocked-by relations
-    dependents = (@work_package.precedes.with_status_open + WorkPackage.find(@work_package.block_ids)).uniq
+    dependents = WorkPackage.with_status_open.find(
+      (@work_package.precede_ids + @work_package.block_ids).uniq
+    )
     dependents.each do |dependent|
       unless dependent.follows.with_status_open.any?
         OpenProject::Notifications.send(OpenProject::Events::WORK_PACKAGE_UNBLOCKED,

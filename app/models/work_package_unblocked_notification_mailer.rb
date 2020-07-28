@@ -28,26 +28,40 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-OpenProject::Notifications.subscribe('journal_created') do |payload|
-  Notifications::JournalNotificationService.call(payload[:journal], payload[:send_notification])
-end
+class WorkPackageUnblockedNotificationMailer
+  class << self
+    def handle_unblock(work_package, wp_unblocker)
+      return unless notification_enabled?
 
-OpenProject::Notifications.subscribe(OpenProject::Events::AGGREGATED_WORK_PACKAGE_JOURNAL_READY) do |payload|
-  Services::UnblockFollowingWorkPackages.new(payload[:journal]).run
-  Notifications::JournalWpMailService.call(payload[:journal], payload[:send_mail])
-end
+      perform_notification_job(work_package, wp_unblocker)
+    end
 
-OpenProject::Notifications.subscribe('watcher_added') do |payload|
-  WatcherAddedNotificationMailer.handle_watcher(payload[:watcher], payload[:watcher_setter])
-end
+    private
 
-OpenProject::Notifications.subscribe('watcher_removed') do |payload|
-  WatcherRemovedNotificationMailer.handle_watcher(payload[:watcher], payload[:watcher_remover])
-end
+    def perform_notification_job(work_package, wp_unblocker)
+      users = User.find([
+        work_package.assigned_to_id,
+        work_package.responsible_id,
+        work_package.watcher_ids
+      ].flatten.uniq)
+      users.each do |user|
+        next unless notify_about_unblocked_wp?(work_package, user, wp_unblocker)
+        DeliverWorkPackageUnblockedNotificationJob
+          .perform_later(work_package.id, user.id, wp_unblocker.id)
+        end
+    end
 
-OpenProject::Notifications.subscribe(OpenProject::Events::WORK_PACKAGE_UNBLOCKED) do |payload|
-  puts "######################"
-  puts "Notification that a work package is unblocked: #{ payload[:work_package].subject }"
-  puts "######################"
-  WorkPackageUnblockedNotificationMailer.handle_unblock(payload[:work_package], payload[:wp_unblocker])
+    def notify_about_unblocked_wp?(work_package, user, wp_unblocker)
+      return false if notify_about_self_watching?(user, wp_unblocker)
+      user.notify_about?(work_package)
+    end
+
+    def notify_about_self_watching?(user, wp_unblocker)
+      user == wp_unblocker && !user.pref.self_notified?
+    end
+
+    def notification_enabled?
+      Setting.notified_events.include?("work_package_unblocked")
+    end
+  end
 end

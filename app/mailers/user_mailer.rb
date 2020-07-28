@@ -90,6 +90,23 @@ class UserMailer < BaseMailer
     end
   end
 
+  def work_package_unblocked(work_package, user, wp_unblocker)
+    User.execute_as user do
+      @issue = work_package
+      @wp_unblocker = wp_unblocker
+      @preceding_issues = WorkPackage.find(
+        (work_package.follow_ids + work_package.blocked_by_ids).uniq
+      )
+      set_work_package_headers(work_package)
+      message_id work_package, user
+      references work_package, user
+
+      with_locale_for(user) do
+        mail to: user.mail, subject: subject_for_work_package(work_package)
+      end
+    end
+  end
+
   def password_lost(token)
     return unless token.user # token's can have no user
 

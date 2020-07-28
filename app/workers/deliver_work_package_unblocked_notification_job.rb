@@ -28,26 +28,22 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-OpenProject::Notifications.subscribe('journal_created') do |payload|
-  Notifications::JournalNotificationService.call(payload[:journal], payload[:send_notification])
-end
+class DeliverWorkPackageUnblockedNotificationJob < DeliverNotificationJob
+  def perform(work_package_id, recipient_id, wp_unblocker_id)
+    @work_package_id = work_package_id
 
-OpenProject::Notifications.subscribe(OpenProject::Events::AGGREGATED_WORK_PACKAGE_JOURNAL_READY) do |payload|
-  Services::UnblockFollowingWorkPackages.new(payload[:journal]).run
-  Notifications::JournalWpMailService.call(payload[:journal], payload[:send_mail])
-end
+    super(recipient_id, wp_unblocker_id)
+  end
 
-OpenProject::Notifications.subscribe('watcher_added') do |payload|
-  WatcherAddedNotificationMailer.handle_watcher(payload[:watcher], payload[:watcher_setter])
-end
+  def render_mail(recipient:, sender:)
+    return unless work_package
 
-OpenProject::Notifications.subscribe('watcher_removed') do |payload|
-  WatcherRemovedNotificationMailer.handle_watcher(payload[:watcher], payload[:watcher_remover])
-end
+    UserMailer.work_package_unblocked(work_package, recipient, sender)
+  end
 
-OpenProject::Notifications.subscribe(OpenProject::Events::WORK_PACKAGE_UNBLOCKED) do |payload|
-  puts "######################"
-  puts "Notification that a work package is unblocked: #{ payload[:work_package].subject }"
-  puts "######################"
-  WorkPackageUnblockedNotificationMailer.handle_unblock(payload[:work_package], payload[:wp_unblocker])
+  private
+
+  def work_package
+    @work_package ||= WorkPackage.find_by(id: @work_package_id)
+  end
 end
