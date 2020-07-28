@@ -46,8 +46,5 @@ OpenProject::Notifications.subscribe('watcher_removed') do |payload|
 end
 
 OpenProject::Notifications.subscribe(OpenProject::Events::WORK_PACKAGE_UNBLOCKED) do |payload|
-  puts "######################"
-  puts "Notification that a work package is unblocked: #{ payload[:work_package].subject }"
-  puts "######################"
   WorkPackageUnblockedNotificationMailer.handle_unblock(payload[:work_package], payload[:wp_unblocker])
 end
