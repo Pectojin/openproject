@@ -47,11 +47,11 @@ class Services::UnblockFollowingWorkPackages
       (@work_package.precede_ids + @work_package.block_ids).uniq
     )
     dependents.each do |dependent|
-      unless dependent.follows.with_status_open.any?
-        OpenProject::Notifications.send(OpenProject::Events::WORK_PACKAGE_UNBLOCKED,
-                                        work_package: dependent,
-                                        wp_unblocker: @user)
-      end
+      next if dependent.follows.with_status_open.any?
+      next if dependent.blocked_by.with_status_open.any?
+      OpenProject::Notifications.send(OpenProject::Events::WORK_PACKAGE_UNBLOCKED,
+                                      work_package: dependent,
+                                      wp_unblocker: @user)
     end
   end
 end
