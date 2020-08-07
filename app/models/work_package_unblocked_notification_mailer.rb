@@ -1,4 +1,5 @@
 #-- encoding: UTF-8
+
 #-- copyright
 # OpenProject is an open source project management software.
 # Copyright (C) 2012-2020 the OpenProject GmbH
@@ -27,28 +28,40 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-module Redmine
-  class Notifiable < Struct.new(:name, :parent)
-    def to_s
-      name
+class WorkPackageUnblockedNotificationMailer
+  class << self
+    def handle_unblock(work_package, wp_unblocker)
+      return unless notification_enabled?
+
+      perform_notification_job(work_package, wp_unblocker)
     end
 
-    # TODO: Plugin API for adding a new notification?
-    def self.all
-      notifications = []
-      notifications << Notifiable.new('work_package_added')
-      notifications << Notifiable.new('work_package_updated')
-      notifications << Notifiable.new('work_package_note_added', 'work_package_updated')
-      notifications << Notifiable.new('work_package_unblocked', 'work_package_updated')
-      notifications << Notifiable.new('status_updated', 'work_package_updated')
-      notifications << Notifiable.new('work_package_priority_updated', 'work_package_updated')
-      notifications << Notifiable.new('news_added')
-      notifications << Notifiable.new('news_comment_added')
-      notifications << Notifiable.new('file_added')
-      notifications << Notifiable.new('message_posted')
-      notifications << Notifiable.new('wiki_content_added')
-      notifications << Notifiable.new('wiki_content_updated')
-      notifications
+    private
+
+    def perform_notification_job(work_package, wp_unblocker)
+      users = User.find([
+        work_package.assigned_to_id,
+        work_package.responsible_id,
+        work_package.watcher_ids
+      ].flatten.uniq)
+      users.each do |user|
+        next unless notify_about_unblocked_wp?(work_package, user, wp_unblocker)
+        DeliverWorkPackageUnblockedNotificationJob
+          .perform_later(work_package.id, user.id, wp_unblocker.id)
+        end
+    end
+
+    def notify_about_unblocked_wp?(work_package, user, wp_unblocker)
+      return false if notify_about_self_watching?(user, wp_unblocker)
+      user.notify_about?(work_package)
+    end
+
+    def notify_about_self_watching?(user, wp_unblocker)
+      user == wp_unblocker && !user.pref.self_notified?
+    end
+
+    def notification_enabled?
+      Setting.notified_events.include?("work_package_unblocked")
     end
   end
 end

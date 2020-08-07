@@ -38,6 +38,7 @@ module OpenProject
   # @see OpenProject::Notifications
   module Events
     AGGREGATED_WORK_PACKAGE_JOURNAL_READY = "aggregated_work_package_journal_ready".freeze
+    WORK_PACKAGE_UNBLOCKED = "work_package_unblocked".freeze
     NEW_TIME_ENTRY_CREATED = "new_time_entry_created".freeze
 
     PROJECT_CREATED = "project_created".freeze

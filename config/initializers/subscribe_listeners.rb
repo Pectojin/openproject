@@ -33,6 +33,7 @@ OpenProject::Notifications.subscribe('journal_created') do |payload|
 end
 
 OpenProject::Notifications.subscribe(OpenProject::Events::AGGREGATED_WORK_PACKAGE_JOURNAL_READY) do |payload|
+  Services::UnblockFollowingWorkPackages.new(payload[:journal]).run
   Notifications::JournalWpMailService.call(payload[:journal], payload[:send_mail])
 end
 
@@ -42,4 +43,8 @@ end
 
 OpenProject::Notifications.subscribe('watcher_removed') do |payload|
   WatcherRemovedNotificationMailer.handle_watcher(payload[:watcher], payload[:watcher_remover])
+end
+
+OpenProject::Notifications.subscribe(OpenProject::Events::WORK_PACKAGE_UNBLOCKED) do |payload|
+  WorkPackageUnblockedNotificationMailer.handle_unblock(payload[:work_package], payload[:wp_unblocker])
 end

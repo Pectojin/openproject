@@ -1,4 +1,5 @@
 #-- encoding: UTF-8
+
 #-- copyright
 # OpenProject is an open source project management software.
 # Copyright (C) 2012-2020 the OpenProject GmbH
@@ -27,28 +28,22 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-module Redmine
-  class Notifiable < Struct.new(:name, :parent)
-    def to_s
-      name
-    end
+class DeliverWorkPackageUnblockedNotificationJob < DeliverNotificationJob
+  def perform(work_package_id, recipient_id, wp_unblocker_id)
+    @work_package_id = work_package_id
 
-    # TODO: Plugin API for adding a new notification?
-    def self.all
-      notifications = []
-      notifications << Notifiable.new('work_package_added')
-      notifications << Notifiable.new('work_package_updated')
-      notifications << Notifiable.new('work_package_note_added', 'work_package_updated')
-      notifications << Notifiable.new('work_package_unblocked', 'work_package_updated')
-      notifications << Notifiable.new('status_updated', 'work_package_updated')
-      notifications << Notifiable.new('work_package_priority_updated', 'work_package_updated')
-      notifications << Notifiable.new('news_added')
-      notifications << Notifiable.new('news_comment_added')
-      notifications << Notifiable.new('file_added')
-      notifications << Notifiable.new('message_posted')
-      notifications << Notifiable.new('wiki_content_added')
-      notifications << Notifiable.new('wiki_content_updated')
-      notifications
-    end
+    super(recipient_id, wp_unblocker_id)
+  end
+
+  def render_mail(recipient:, sender:)
+    return unless work_package
+
+    UserMailer.work_package_unblocked(work_package, recipient, sender)
+  end
+
+  private
+
+  def work_package
+    @work_package ||= WorkPackage.find_by(id: @work_package_id)
   end
 end
